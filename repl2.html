@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8"> 
+    </head>
+    <body>
+        <div id="renkon">
+            <script type="reactive">
+                const {ReflectCommands} = import("https://substrate.home.arpa/tool-call/js/commands.js")
+                const {h, render, html} = import(Renkon.spaceURL("./preact.standalone.module.js"));
+                const topUrlInput = Events.listener(document.querySelector("#topUrl"), "keydown", topUrlKeyHandler);
+
+                const newTabRequest = undefined;
+                const commandRequest = Events.receiver();
+                console.log(commandRequest);
+                const invokeCommand = ((commandRequest, reflectResponse) => {
+                    debugger;
+                    const cmd = reflectResponse[commandRequest.value];
+                    if (commandRequest.value === "quickjs:eval") {
+                        return {id: commandRequest.index, value: cmd.run()}
+                    }
+                })(commandRequest, reflectResponse);
+
+                console.log(invokeCommand);
+
+                const topUrlKeyHandler = (evt) => {
+                    if (evt.key === "Enter") {
+                        evt.preventDefault();
+                        evt.stopPropagation();
+                        console.log("enter");
+                        return evt.target.value;
+                    }
+                };
+
+                const targetUrl = Behaviors.collect(document.querySelector("#topUrlInput").value, topUrlInput, (_, topUrlInput) => topUrlInput);
+                
+                const reflectResponse = new ReflectCommands(targetUrl).reflect();
+                
+                console.log("reflectResponse", reflectResponse);
+
+                const tabs = Behaviors.collect([{}], newTabRequest, (current, request) => {
+                    return [...current, {}]
+                });
+
+                const commandKeyHandler = (evt, i) => {
+                    if (evt.key === "Enter") {
+                        evt.preventDefault();
+                        evt.stopPropagation();
+                        console.log("command enter", i);
+                        Events.send(commandRequest, {value: evt.target.value, index: i});
+                    }
+                };
+
+                const tabDOMs = tabs.map((tab, i) => {
+                    console.log(tab);
+                    return h("div", {id: `tab-${i}`, class: "commandPane"},
+                      [h("div",
+                         {id: `editor-holder-${i}`, class: "commandEditor"},
+                         [h("span", {}, "> "), h("input", {value: "", onKeydown: (evt) => commandKeyHandler(evt, i)})])
+                      ])
+                });
+
+                render(tabDOMs, document.querySelector("#commandContainer"));
+            </script>
+            <div id="container" style="height: 100%">
+                <div id="topUrl"><input id="topUrlInput" value="https://substrate.home.arpa"/></div>
+                <div id="rootBar">
+                    <div id="rootLabel">Substrate Root</div>
+                    <div id="rootSubLabel">Top-level things you can do with Substrate</div>
+                </div>
+                <div id="commandContainer">
+                </div>
+            </div>
+            <style>
+                #container {
+                    display: flex;
+                    flex-direction: column;
+                    border: 2px solid black;
+                    
+                }
+                #topUrl {
+                    width: 100%;
+                    background-color: #ededed;
+                    margin: 2px 2px 10px 2px;
+                }
+
+                #topUrl input {
+                    width: 100%;
+                    border: 0px;
+                }
+
+                #rootBar {
+                    background-color: #f4f4f4;
+                    display: flex;
+                    flex-direction: column;
+                    border: 1px solid #a8a8a8;
+                    margin: 2px 2px 10px 2px;
+                    padding: 8px;
+                }
+
+                #rootLabel {
+                    margin-left: 18px;
+                    font-size: 22px;
+                    font-weight: 700;
+                    line-height: 26.63px;
+                }
+
+                #rootSubLabel {
+                    margin-left: 18px;
+                    font-size: 12px;
+                    line-height: 14.52px;
+                }
+
+                #commandContainer {
+                    flex-grow: 1;
+                }
+
+                .commandPane {
+                    min-height: 100px;
+                    background-color: #e4f3f6;
+                    margin: 4px;
+                }
+
+                .commandEditor input {
+                    width: 100%;
+                    border: 0px;
+                    background: transparent;
+                }
+
+                .commandEditor {
+                    display: flex;
+                    width: 100%;
+                    border: 0px;
+                    background: transparent;
+                }
+
+                .commandMenu {
+                    margin-top: 10px;
+                    display: flex;
+                    flex-direction: column;
+                    background-color: #f4f4f4;
+                    min-width: 80px;
+                    width: fit-content;
+                }
+
+                .commandItem {
+                    font-size: 14px;
+                }
+                
+                .commandRow {
+                    display: flex;
+                    border: 1px solid black;
+                }
+                
+                .output {
+                    margin-left: 100px;
+                    flex-grow: 1;
+                }
+            </style>
+        </div>
+        <script type="module">
+            import {view} from "./renkon.js";
+            view();
+        </script>
+    </body>
+</html>

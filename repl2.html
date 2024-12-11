@@ -10,18 +10,9 @@
                 const {h, render, html} = import(Renkon.spaceURL("./preact.standalone.module.js"));
                 const topUrlInput = Events.listener(document.querySelector("#topUrl"), "keydown", topUrlKeyHandler);
 
-                const newTabRequest = undefined;
-                const commandRequest = Events.receiver();
-                console.log(commandRequest);
-                const invokeCommand = ((commandRequest, reflectResponse) => {
-                    debugger;
-                    const cmd = reflectResponse[commandRequest.value];
-                    if (commandRequest.value === "quickjs:eval") {
-                        return {id: commandRequest.index, value: cmd.run()}
-                    }
-                })(commandRequest, reflectResponse);
+                const newTabRequest = Events.change(invokeCommand);
 
-                console.log(invokeCommand);
+                const commandRequest = Events.receiver();
 
                 const topUrlKeyHandler = (evt) => {
                     if (evt.key === "Enter") {
@@ -38,10 +29,6 @@
                 
                 console.log("reflectResponse", reflectResponse);
 
-                const tabs = Behaviors.collect([{}], newTabRequest, (current, request) => {
-                    return [...current, {}]
-                });
-
                 const commandKeyHandler = (evt, i) => {
                     if (evt.key === "Enter") {
                         evt.preventDefault();
@@ -51,12 +38,31 @@
                     }
                 };
 
+                const invokeCommand = ((commandRequest, reflectResponse) => {
+                    const cmd = reflectResponse[commandRequest.value];
+                    if (commandRequest.value === "quickjs:eval") {
+                        // return {id: commandRequest.index, value: cmd.run()}
+                    }
+                    return {id: commandRequest.index, value: {result: "7"}};
+                })(commandRequest, reflectResponse);
+
+                console.log("invokeCommand", invokeCommand);
+
+                const tabs = Behaviors.collect([{}], newTabRequest, (current, request) => {
+                    const result = [...current, {}];
+                    const newTab = {...result[request.id]};
+                    newTab.value = request.value;
+                    result[request.id] = newTab;
+                    return result;
+                });
+
                 const tabDOMs = tabs.map((tab, i) => {
-                    console.log(tab);
+                    console.log("tab", tab);
                     return h("div", {id: `tab-${i}`, class: "commandPane"},
                       [h("div",
                          {id: `editor-holder-${i}`, class: "commandEditor"},
-                         [h("span", {}, "> "), h("input", {value: "", onKeydown: (evt) => commandKeyHandler(evt, i)})])
+                         [h("span", {}, "> "), h("input", {value: "", onKeydown: (evt) => commandKeyHandler(evt, i)})]),
+                       h("div", {class: "commandResult"}, JSON.stringify(tab.value))
                       ])
                 });
 

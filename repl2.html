@@ -10,8 +10,6 @@
                 const {h, render, html} = import(Renkon.spaceURL("./preact.standalone.module.js"));
                 const topUrlInput = Events.listener(document.querySelector("#topUrl"), "keydown", topUrlKeyHandler);
 
-                const newTabRequest = Events.change(invokeCommand);
-
                 const commandRequest = Events.receiver();
 
                 const topUrlKeyHandler = (evt) => {
@@ -39,36 +37,48 @@
                 };
 
                 const invokeCommandResponse = ((commandRequest, reflectResponse) => {
-                    const cmd = reflectResponse[commandRequest.value];
-                    if (commandRequest.value === "quickjs:eval") {
-                        // return {id: commandRequest.index, value: cmd.run()}
-                    }
-                    return {id: commandRequest.index, value: Promise.resolve({result: "7"})};
+                    const input = commandRequest.value;
+
+                    const split = /(\W*)(\S+)(\s+(.*))?$/.exec(input);
+                    console.log("split", split);
+                    if (!split || !split[2]) {return;}
+                    const cmd = reflectResponse[split[2]];
+                    if (!cmd) {return;}
+                    const value = split[3] ? eval("(" + split[3] + ")") : {};
+                    return {id: commandRequest.index, input: input, value: cmd.run(value)}
                 })(commandRequest, reflectResponse);
 
                 const invokeCommand = Events.resolvePart(invokeCommandResponse.value, invokeCommandResponse);
 
                 console.log("invokeCommand", invokeCommand);
 
-                const tabs = Behaviors.collect([{}], newTabRequest, (current, request) => {
+                const tabs = Behaviors.collect([{}], Events.change(invokeCommand), (current, request) => {
+                    console.log("request", request);
                     const result = [...current, {}];
                     const newTab = {...result[request.id]};
                     newTab.value = request.value;
+                    newTab.input = request.input;
                     result[request.id] = newTab;
                     return result;
                 });
 
                 const tabDOMs = tabs.map((tab, i) => {
-                    console.log("tab", tab);
                     return h("div", {id: `tab-${i}`, class: "commandPane"},
                       [h("div",
                          {id: `editor-holder-${i}`, class: "commandEditor"},
-                         [h("span", {}, "> "), h("input", {value: "", onKeydown: (evt) => commandKeyHandler(evt, i)})]),
+                         [h("span", {}, "> "), h("input", {value: tab.input || "", onKeydown: (evt) => commandKeyHandler(evt, i)})]),
                        h("div", {class: "commandResult"}, JSON.stringify(tab.value))
                       ])
                 });
 
-                render(tabDOMs, document.querySelector("#commandContainer"));
+                ((tabDOMs) => {
+                    const result = render(tabDOMs, document.querySelector("#commandContainer"));
+                    const input = document.querySelector("#commandContainer").querySelector(`#editor-holder-${tabDOMs.length - 1} input`);
+                    console.log("input", input);
+                    if (input) {
+                        input.focus()
+                    }
+                })(tabDOMs);
             </script>
             <div id="container" style="height: 100%">
                 <div id="topUrl"><input id="topUrlInput" value="https://substrate.home.arpa"/></div>

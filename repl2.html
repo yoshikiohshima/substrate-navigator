@@ -38,13 +38,15 @@
                     }
                 };
 
-                const invokeCommand = ((commandRequest, reflectResponse) => {
+                const invokeCommandResponse = ((commandRequest, reflectResponse) => {
                     const cmd = reflectResponse[commandRequest.value];
                     if (commandRequest.value === "quickjs:eval") {
                         // return {id: commandRequest.index, value: cmd.run()}
                     }
-                    return {id: commandRequest.index, value: {result: "7"}};
+                    return {id: commandRequest.index, value: Promise.resolve({result: "7"})};
                 })(commandRequest, reflectResponse);
+
+                const invokeCommand = Events.resolvePart(invokeCommandResponse.value, invokeCommandResponse);
 
                 console.log("invokeCommand", invokeCommand);
 

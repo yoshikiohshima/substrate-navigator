@@ -11,6 +11,7 @@
                 const topUrlInput = Events.listener(document.querySelector("#topUrl"), "keydown", topUrlKeyHandler);
 
                 const commandRequest = Events.receiver();
+                const reflowRequest = Events.receiver();
 
                 const topUrlKeyHandler = (evt) => {
                     if (evt.key === "Enter") {
@@ -62,7 +63,10 @@
                     return result;
                 });
 
+                const reflowRequester = () => Events.send(reflowRequest, "foo")
+
                 const tabDOMs = tabs.map((tab, i) => {
+                    console.log(tab);
                     return h("div", {id: `tab-${i}`, class: "commandPane"},
                       [h("div",
                          {id: `editor-holder-${i}`, class: "commandEditor"},
@@ -73,12 +77,24 @@
                               ]),
                           ])
                          ]),
-                       h("div", {class: "commandResult"}, JSON.stringify(tab.value))
+                       h("div", {
+                           class: "commandResult",
+                           id: `command-result-${i}`
+                       }, "")
                       ])
                 });
 
-                const focusInput = ((tabDOMs) => {
+                const insertInspectorAndFocusInput = ((tabs, tabDOMs) => {
+                    console.log("insertInspectorAndFocusInput");
                     const result = render(tabDOMs, document.querySelector("#commandContainer"));
+                    tabs.forEach((tab, i) => {
+                        const dom = document.querySelector(`#command-result-${i}`);
+                        if (dom && tab.value) {
+                            const inspector = Renkon.app.newInspector(tab.value, dom);
+                        }
+                        console.log("dom", dom);
+                    });
+                    
                     const input = document.querySelector("#commandContainer").querySelector(`#editor-holder-${tabDOMs.length - 1} input`);
                     console.log("input", input);
                     if (input) {
@@ -86,15 +102,18 @@
                         return input;
                     }
                     return;
-                })(tabDOMs);
+                })(tabs, tabDOMs);
 
-                const overlayMover = ((focusInput) => {
+                const overlayMover = ((request) => {
+                    const last = document.querySelector("#commandContainer").lastChild;
+                    if (!last) {return;}
+                    const focusInput = last.querySelector("input");
+                    if (!focusInput) {return;}
                     const rect = focusInput.getBoundingClientRect();
-                    console.log(rect);
                     const inputOverlay = document.querySelector("#inputOverlay");
                     inputOverlay.style.top = `${rect.bottom + 5}px`;
                     inputOverlay.style.left = `${rect.left}px`;
-                })(focusInput);
+                })(Events.timer(100)/*Events.or(Events.change(insertInspectorAndFocusInput), reflowRequest)*/);
                 
             </script>
             <div id="container" style="height: 100%">
@@ -178,6 +197,10 @@
                     width: fit-content;
                 }
 
+                .commandResult {
+                    background-color: #f8f8f8;
+                }
+
                 .commandItem {
                     font-size: 14px;
                 }
@@ -212,8 +235,8 @@
             </style>
         </div>
         <script type="module">
-            import {view} from "./renkon.js";
-            view();
+            import {view, newInspector} from "./renkon.js";
+            view({app: {newInspector}});
         </script>
     </body>
 </html>

@@ -26,7 +26,6 @@
                 const {initGrammar, translate} = import("./parser.js");
 
                 const viewCommands = {go: (input) => {
-                    debugger;
                     const url = input.params.url;
                     console.log("go", url);
                     if (!url) {return;}

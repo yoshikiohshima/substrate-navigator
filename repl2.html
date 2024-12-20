@@ -26,10 +26,11 @@
                 const {initGrammar, translate} = import("./parser.js");
 
                 const viewCommands = {go: (input) => {
-                    document.querySelector("#topUrl").value = input;
+                    debugger;
                     const url = input.params.url;
                     console.log("go", url);
                     if (!url) {return;}
+                    document.querySelector("#topUrlInput").value = url;
                     Events.send(goRequest, url)
                 }};
                 

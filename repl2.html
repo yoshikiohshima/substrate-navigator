@@ -2,16 +2,48 @@
 <html>
     <head>
         <meta charset="utf-8"> 
+        <script src="./ohm.js"></script>
     </head>
     <body>
         <div id="renkon">
             <script type="reactive">
-                const {ReflectCommands} = import("https://substrate.home.arpa/tool-call/js/commands.js")
+                const hostName = (() => {
+                    const maybeHost = new URL(window.location).searchParams.get("host")
+                    if (maybeHost) {
+                        return maybeHost;
+                    }
+                    return "/";
+                })();
+
+                (() => {
+                    if (hostName !== "/") {
+                        document.querySelector("#topUrl"). value = hostName;
+                    }
+                })();
+                
+                const {ReflectCommands} = import(`${hostName}/tool-call/js/commands.js`);
                 const {h, render, html} = import(Renkon.spaceURL("./preact.standalone.module.js"));
-                const topUrlInput = Events.listener(document.querySelector("#topUrl"), "keydown", topUrlKeyHandler);
+                const {initGrammar, translate} = import("./parser.js");
+
+                const viewCommands = {go: (input) => {
+                    document.querySelector("#topUrl").value = input;
+                    const url = input.params.url;
+                    console.log("go", url);
+                    if (!url) {return;}
+                    Events.send(goRequest, url)
+                }};
+                
+                const topUrlInput = Events.or(
+                    Events.listener(document.querySelector("#topUrl"), "keydown", topUrlKeyHandler),
+                    goRequest
+                );
 
                 const commandRequest = Events.receiver();
+                const viewCommandRequest = Events.receiver();
                 const reflowRequest = Events.receiver();
+                const goRequest = Events.receiver();
+
+                const grammar = initGrammar();
 
                 const topUrlKeyHandler = (evt) => {
                     if (evt.key === "Enter") {
@@ -22,9 +54,13 @@
                     }
                 };
 
-                const targetUrl = Behaviors.collect(document.querySelector("#topUrlInput").value, topUrlInput, (_, topUrlInput) => topUrlInput);
+                const targetUrl = Behaviors.collect(hostName, topUrlInput, (_, topUrlInput) => topUrlInput);
+
+                console.log("targetUrl", targetUrl);
                 
-                const reflectResponse = new ReflectCommands(targetUrl).reflect();
+                const reflectResponse = ((targetUrl) => {
+                    return new ReflectCommands(targetUrl).reflect();
+                })(targetUrl);
                 
                 console.log("reflectResponse", reflectResponse);
 
@@ -33,20 +69,31 @@
                         evt.preventDefault();
                         evt.stopPropagation();
                         console.log("command enter", i);
-                        Events.send(commandRequest, {value: evt.target.value, index: i});
+                        const translated = translate(evt.target.value);
+                        if (!translated) {return;}
+                        if (translated.viewCommand) {
+                            Events.send(viewCommandRequest, {value: translated, input: evt.target.value, index: i});
+                        } else {
+                            Events.send(commandRequest, {value: translated, input: evt.target.value, index: i});
+                        }
                     }
                 };
 
-                const invokeCommandResponse = ((commandRequest, reflectResponse) => {
-                    const input = commandRequest.value;
+                const invokeViewCommand = ((viewCommandRequest) => {
+                    const command = viewCommandRequest.value;
 
-                    const split = /(\W*)(\S+)(\s+(.*))?$/.exec(input);
-                    console.log("split", split);
-                    if (!split || !split[2]) {return;}
-                    const cmd = reflectResponse[split[2]];
+                    const cmd = viewCommands[command.command];
                     if (!cmd) {return;}
-                    const value = split[3] ? eval("(" + split[3] + ")") : {};
-                    return {id: commandRequest.index, input: input, value: cmd.run(value)}
+                    return cmd(command);
+                })(viewCommandRequest);
+
+                const invokeCommandResponse = ((commandRequest, reflectResponse) => {
+                    const command = commandRequest.value;
+                    const input = commandRequest.input;
+
+                    const cmd = reflectResponse[command.command];
+                    if (!cmd) {return;}
+                    return {id: commandRequest.index, input: input, value: cmd.run(command.params)}
                 })(commandRequest, reflectResponse);
 
                 const invokeCommand = Events.resolvePart(invokeCommandResponse.value, invokeCommandResponse);
@@ -92,7 +139,6 @@
                         if (dom && tab.value) {
                             const inspector = Renkon.app.newInspector(tab.value, dom);
                         }
-                        console.log("dom", dom);
                     });
                     
                     const input = document.querySelector("#commandContainer").querySelector(`#editor-holder-${tabDOMs.length - 1} input`);
@@ -117,7 +163,7 @@
                 
             </script>
             <div id="container" style="height: 100%">
-                <div id="topUrl"><input id="topUrlInput" value="https://substrate.home.arpa"/></div>
+                <div id="topUrl"><input id="topUrlInput" value="/"/></div>
                 <div id="rootBar">
                     <div id="rootLabel">Substrate Root</div>
                     <div id="rootSubLabel">Top-level things you can do with Substrate</div>

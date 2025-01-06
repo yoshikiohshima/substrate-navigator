@@ -17,7 +17,7 @@
 
                 (() => {
                     if (hostName !== "/") {
-                        document.querySelector("#topUrl"). value = hostName;
+                        document.querySelector("#topUrl").value = hostName;
                     }
                 })();
                 
@@ -54,12 +54,18 @@
                     }
                 };
 
-                const targetUrl = Behaviors.collect(hostName, topUrlInput, (_, topUrlInput) => topUrlInput);
+                const targetUrl = Behaviors.collect(hostName, topUrlInput, (_, topUrlInput) => {
+                    if (topUrlInput.startsWith("/") && hostName) {
+                        return `${hostName}${topUrlInput}`;
+                    }
+                    return topUrlInput
+                });
 
                 console.log("targetUrl", targetUrl);
                 
                 const reflectResponse = ((targetUrl) => {
-                    return new ReflectCommands(targetUrl).reflect();
+                        
+                        return new ReflectCommands(targetUrl).reflect();
                 })(targetUrl);
                 
                 console.log("reflectResponse", reflectResponse);
@@ -69,7 +75,12 @@
                         evt.preventDefault();
                         evt.stopPropagation();
                         console.log("command enter", i);
-                        const translated = translate(evt.target.value);
+                        let translated;
+                        try {
+                            translated = translate(evt.target.value);
+                        } catch(e) {
+                            console.log(e.reason, e.expected, e.pos);
+                        }
                         if (!translated) {return;}
                         if (translated.viewCommand) {
                             Events.send(viewCommandRequest, {value: translated, input: evt.target.value, index: i});

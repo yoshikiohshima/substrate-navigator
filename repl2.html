@@ -64,7 +64,6 @@
                 console.log("targetUrl", targetUrl);
                 
                 const reflectResponse = ((targetUrl) => {
-                        
                         return new ReflectCommands(targetUrl).reflect();
                 })(targetUrl);
                 
@@ -111,7 +110,17 @@
 
                 console.log("invokeCommand", invokeCommand);
 
-                const tabs = Behaviors.collect([{}], Events.change(invokeCommand), (current, request) => {
+                const tabs = Behaviors.collect([{}], Events.or(Events.change(invokeCommand), goRequest), (current, request) => {
+                    if (typeof request === "string") {
+                        // a bad way to check it but
+                        // this is when request is coming from the second argument or Events.or, goRequest
+                        const result = [...current, {}];
+                        const newTab = {...result[result.length - 2]};
+                        newTab.value = `@go url: ${request}`;
+                        newTab.input = `@go url: ${request}`;
+                        result[result.length - 2] = newTab;
+                        return result;
+                    }
                     console.log("request", request);
                     const result = [...current, {}];
                     const newTab = {...result[request.id]};

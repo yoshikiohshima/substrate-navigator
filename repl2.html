@@ -43,8 +43,17 @@
                 const reflowRequest = Events.receiver();
                 const goRequest = Events.receiver();
                 const tabRequest = Events.receiver();
+                const suggestion = Events.receiver();
 
-                console.log("tabRequest", tabRequest);
+                console.log(suggestion);
+
+                const insertSuggestion = ((suggestion, insertInspectorAndFocusInput) => {
+                    console.log("insertSuggestion", suggestion);
+                    insertInspectorAndFocusInput.value = suggestion.name + " ";
+                    const length = suggestion.name.length + 1;
+                    insertInspectorAndFocusInput.focus();
+                    insertInspectorAndFocusInput.setSelectionRange(length, length);
+                })(suggestion, insertInspectorAndFocusInput);
 
                 const grammar = initGrammar();
 
@@ -70,7 +79,19 @@
                         return new ReflectCommands(targetUrl).reflect();
                 })(targetUrl);
                 
-                console.log("reflectResponse", reflectResponse);
+                const suggestionDOMs = ((reflectResponse) => {
+                    const keys = Object.keys(reflectResponse).sort();
+                    console.log(keys);
+                    return keys.map((key) => {
+                        return h("div", {
+                            id: `msg-${key}`,
+                            class: "suggestionLine",
+                            onclick: (evt) => Events.send(suggestion, {name: evt.target.textContent})
+                        }, key);
+                    });
+                })(reflectResponse);
+
+                render(suggestionDOMs, document.querySelector("#inputOverlay"));
 
                 const commandKeyHandler = (evt, i) => {
                     if (evt.key === "Enter") {
@@ -190,7 +211,6 @@
                     });
                     
                     const input = document.querySelector("#commandContainer").querySelector(`#editor-holder-${sectionDOMs.length - 1} input`);
-                    console.log("input", input);
                     if (input) {
                         input.focus()
                         return input;
@@ -207,7 +227,7 @@
                     const inputOverlay = document.querySelector("#inputOverlay");
                     inputOverlay.style.top = `${rect.bottom + 5}px`;
                     inputOverlay.style.left = `${rect.left}px`;
-                })(Events.timer(100)/*Events.or(Events.change(insertInspectorAndFocusInput), reflowRequest)*/);
+                })(Events.timer(100));
                 
             </script>
             <div id="container" style="height: 100%">
@@ -340,6 +360,8 @@
 
                 #inputOverlay {
                     position: absolute;
+                    display: flex;
+                    flex-direction: column;
                     min-width: 300px;
                     min-height: 80px;
                     border: 1px solid black;
